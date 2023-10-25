@@ -10,11 +10,7 @@ import sys
    z/   |y
 """
 
-numLine = 30
-x_max = numLine*2
-y_max = numLine*5
-x_bias = numLine
-y_bias = numLine*2
+numLine = 40
 
 x_max = numLine*3
 y_max = numLine*8
@@ -83,10 +79,10 @@ class Cube(object):
         self.normal_vector_ball = np.array([ [c[0]+numLine/2, c[1], c[2] ] for c in self.coordinate_yz])
         self.visual_vector = np.array([0,0,1])
         
-        self.disappoint_vec = (0, 0, -100)
+        self.disappoint_vec = (0, 0, numLine*3)
         
         # 投影面的坐标及参考点 
-        self.ground = [(0, 0, 1), (0, 0, -numLine)]
+        # self.ground = [(0, 0, 1), (0, 0, -numLine)]
         self.ground = [(0, 0, 1), (0, 0, 0)]
         # self.ground = [(1, 0, 0), (numLine//2, 0, 0)]
         # self.ground = [(0, 1, 0), (0, numLine, 0)]
@@ -177,11 +173,14 @@ class Cube(object):
         
         def square2buf(cube: Cube, square, light, x_bias, y_bias):
             for c in square:
-                project_vec = c - self.disappoint_vec
+                project_vec = - c + self.disappoint_vec
                 c_ = project(c, self.ground[0], project_vec, self.ground[1])
                 x = int(c_[0]+x_bias)%row
-                y = int(2*c_[1]+y_bias)%col
-                cube.buf[x, y] = light
+                y = int(c_[1]*2+y_bias)%col
+                # if (x < 0 or y < 0) or (x >= row or y >= col):
+                #     return
+                # else:
+                cube.buf[x][y] = light
         
         # 投影
         # for i, square in enumerate(self.squares):
@@ -198,7 +197,6 @@ class Cube(object):
         
         for i, square in enumerate(self.squares[6:]):
             # 依照投影向量与各个面法向量的点积, 决定当前应该显示哪个面
-            # if dot_product[i] > 0:
             square2buf(self, square, light_product[i], x_bias, y_bias)  
         # for i, square in enumerate(self.temp):
         #     # 依照投影向量与各个面法向量的点积, 决定当前应该显示哪个面
@@ -230,8 +228,8 @@ class Cube(object):
         # refresh buf
         self.buf = np.zeros_like(self.buf)
         # print(self.normal_vector)
-        print(self.testnormal)
-        print(self.testlight)
+        # print(self.testnormal)
+        # print(self.testlight)
         # print(self.squares[0])
 
 class KeyHandler(object):
