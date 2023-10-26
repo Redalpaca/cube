@@ -10,15 +10,12 @@ import sys
    z/   |y
 """
 
-numLine = 30
+numLine = 40
 
 x_max = numLine*3
 y_max = numLine*8
 x_bias = numLine*1.5
 y_bias = numLine*3
-
-#  倍率越高，越接近平行投影
-rate = 3.5
 
 theta = np.pi / 16
 
@@ -61,7 +58,7 @@ class Cube(object):
         self.illuminant_vector = np.array([0.5773502,0.5773502,0.5773502]) 
         
         refer = numLine // 2
-        self.coordinate_yz = self.__init_coordinate_yz_ball__(-refer, -refer, refer, numLine= numLine)
+        self.coordinate_yz = self.__init_coordinate_yz__(-refer, -refer, refer, numLine= numLine)
         self.coordinate_xz = self.__init_coordinate_xz__(-refer, -refer, refer, numLine= numLine)
         self.coordinate_xy = self.__init_coordinate_xy__(-refer, -refer, refer, numLine= numLine)
         
@@ -82,8 +79,8 @@ class Cube(object):
         self.normal_vector_ball = np.array([ [c[0]+numLine/2, c[1], c[2] ] for c in self.coordinate_yz])
         self.visual_vector = np.array([0,0,1])
         
-        global rate
-        self.disappoint_vec = (0, 0, numLine*rate)
+        self.disappoint_vec = (0, 0, numLine*3)
+        
         # 投影面的坐标及参考点 
         # self.ground = [(0, 0, 1), (0, 0, -numLine)]
         self.ground = [(0, 0, 1), (0, 0, 0)]
@@ -94,9 +91,9 @@ class Cube(object):
                         self.coordinate_yz_1, self.coordinate_xz_1, self.coordinate_xy_1]
         
         self.temp = []
-        for square in self.squares[1:]:
+        for square in self.squares[:]:
             self.temp.append( square + (0, 1.25*numLine, -1.25*numLine) )
-        self.temp.append(self.__init_coordinate_yz__(-refer, -refer, refer, numLine= numLine) + (0, 1.25*numLine, -1.25*numLine))
+        # self.temp.append(self.__init_coordinate_yz__(-refer, -refer, refer, numLine= numLine) + (0, 1.25*numLine, -1.25*numLine))
         
         self.squares.extend(self.temp)
         
@@ -120,15 +117,6 @@ class Cube(object):
         return np.array( [[(x_0, y_0 + i, z_0 - j) for i in range(numLine)] for j in range(numLine)],
                             dtype= np.int16 ).reshape(numLine*numLine, 3)
         
-    def __init_coordinate_yz_ball__(self, x_0, y_0, z_0, numLine):
-        def calc_x(x, y, z):
-            if y**2 + z**2 >= numLine*numLine / 4:
-                return x
-            else:
-                return x - (numLine**2 / 4 - y**2 - z**2)**0.5
-        return np.array( [[(calc_x(x_0, y_0+i, z_0-j), y_0 + i, z_0 - j) for i in range(numLine)] for j in range(numLine)],
-                            dtype= np.float32 ).reshape(numLine*numLine, 3)
-    
     def __init_coordinate_xz__(self, x_0, y_0, z_0, numLine):
         return np.array( [[(x_0 + i, y_0, z_0 - j) for i in range(numLine)] for j in range(numLine)],
                                     dtype= np.int16 ).reshape(numLine*numLine, 3)
@@ -155,7 +143,18 @@ class Cube(object):
             self.squares[idx] = np.dot(square, rotate)
         self.normal_vector = np.dot(self.normal_vector, rotate)
         self.normal_vector_ball = np.dot(self.normal_vector_ball, rotate)
+    
+    def move(self, direction):
+        if direction == 'w':
+            for i, square in enumerate(self.squares):
+                self.squares[i] = square + (0,0,2)
+        if direction == 's':
+            for i, square in enumerate(self.squares):
+                self.squares[i] = square + (0,0,-2)
         
+        
+        pass
+    
     def rotate_light(self, theta= 0, axis= "x"):
         rotate = Cube.__rotate__(theta, axis)
         self.illuminant_vector = np.dot(self.illuminant_vector, rotate)
@@ -260,12 +259,12 @@ class KeyHandler(object):
     
     # light
     def handler_up(self, event):
-        cube.rotate_light(2*theta, axis= "y")
+        cube.rotate(theta, axis= "y")
         cube.writeBuf(x_bias, y_bias)
         cube.show()
         pass
     def handler_down(self, event):
-        cube.rotate_light(-2*theta, axis= "y")
+        cube.rotate(-theta, axis= "y")
         cube.writeBuf(x_bias, y_bias)
         cube.show()
         pass
