@@ -178,12 +178,11 @@ class Cube(object):
             for c in square:
                 project_vec = - c + self.disappoint_vec
                 c_ = project(c, self.ground[0], project_vec, self.ground[1])
-                x = int(c_[0]+x_bias)%row
-                y = int(c_[1]*2+y_bias)%col
-                # if (x < 0 or y < 0) or (x >= row or y >= col):
-                #     return
-                # else:
-                cube.buf[x][y] = light
+                x = int(c_[0]+x_bias)
+                y = int(c_[1]*2+y_bias)
+                # todo optimize
+                if x in range(0,row) and y in range(0,col):
+                    cube.buf[x][y] = light
         
         # 投影
         # for i, square in enumerate(self.squares):

@@ -68,6 +68,11 @@ class Cube(object):
         self.illuminant_vector = np.array([0.5773502,0.5773502,0.5773502]) 
         
         refer = numLine // 2
+        
+        self.left_0 = self.__init_coordinate_xz__(-refer, -refer, refer, numLine= numLine, extend= 20)
+        self.right_0 = self.__init_coordinate_xz__(-refer, refer, refer, numLine= numLine, extend= 20)
+        self.bottom_0 = self.__init_coordinate_yz__(refer, -refer, refer, numLine= numLine, extend= 20)
+        
         self.coordinate_yz = self.__init_coordinate_yz__(-refer, -refer, refer, numLine= numLine, extend= 20)
         self.coordinate_xz = self.__init_coordinate_xz__(-refer, -refer, refer, numLine= numLine, extend= 20)
         self.coordinate_xy = self.__init_coordinate_xy__(-refer, -refer, refer, numLine= numLine)
@@ -97,18 +102,17 @@ class Cube(object):
         # self.ground = [(0, 1, 0), (0, numLine, 0)]
         
         self.ref_point = np.array((0,0,0))
+        self.squares = []
+        self.squares.extend([self.left_0, self.right_0, self.bottom_0])
         
-        self.squares = [self.coordinate_yz, self.coordinate_xz, self.coordinate_xy,
-                        self.coordinate_yz_1, self.coordinate_xz_1, self.coordinate_xy_1]
+        # self.squares = [self.coordinate_yz, self.coordinate_xz, self.coordinate_xy,
+        #                 self.coordinate_yz_1, self.coordinate_xz_1, self.coordinate_xy_1]
+        # self.temp = []
+        # for square in self.squares[:]:
+        #     self.temp.append( square + (0, 1.25*numLine, -1.25*numLine) )        
+        # self.squares.extend(self.temp)
         
-        self.temp = []
-        for square in self.squares[:]:
-            self.temp.append( square + (0, 1.25*numLine, -1.25*numLine) )
-        # self.temp.append(self.__init_coordinate_yz__(-refer, -refer, refer, numLine= numLine) + (0, 1.25*numLine, -1.25*numLine))
         
-        self.squares.extend(self.temp)
-        
-        # self.squares = [self.coordinate_yz, self.coordinate_xz, self.coordinate_xy]
         self.lightMap = [' ', '.', '*', '%']
         self.lightMap = " .-:;=+*#%@@@@@@"
         self.lightMap_ball = " .--:;=+**##%@@"
@@ -166,13 +170,13 @@ class Cube(object):
     def move(self, direction):
         bias = (0,0,0)
         if direction == 'w':
-            bias = (0,0,-3)
+            bias = (0,0,2)
         if direction == 's':
-            bias = (0,0,3)
+            bias = (0,0,-2)
         if direction == 'a':
-            bias = (0,-3,0)
+            bias = (0,2,0)
         if direction == 'd':
-            bias = (0,3,0)
+            bias = (0,-2,0)
         
         self.ref_point += bias
         for i, square in enumerate(self.squares):
@@ -203,8 +207,11 @@ class Cube(object):
             for c in square:
                 project_vec = - c + self.disappoint_vec
                 c_ = project(c, self.ground[0], project_vec, self.ground[1])
-                x = int(c_[0]+x_bias)
-                y = int(c_[1]*2+y_bias)
+                try:
+                    x = int(c_[0]+x_bias)
+                    y = int(c_[1]*2+y_bias)
+                except (OverflowError, ValueError):
+                    continue
                 # todo optimize
                 if x in range(0,row) and y in range(0,col):
                     cube.buf[x][y] = light
@@ -212,16 +219,15 @@ class Cube(object):
                 #     return
                 # else:
                 #     cube.buf[x][y] = light
-        
         for i, square in enumerate(self.squares[:6]):
             # 依照投影向量与各个面法向量的点积, 决定当前应该显示哪个面
-            if dot_product[i] > 0:
-                square2buf(self, square, light_product[i], x_bias, y_bias)  
-        
-        for i, square in enumerate(self.squares[6:]):
-            # 依照投影向量与各个面法向量的点积, 决定当前应该显示哪个面
             square2buf(self, square, light_product[i], x_bias, y_bias)  
-        # for i, square in enumerate(self.temp):
+
+        # for i, square in enumerate(self.squares[:6]):
+        #     # 依照投影向量与各个面法向量的点积, 决定当前应该显示哪个面
+        #     if dot_product[i] > 0:
+        #         square2buf(self, square, light_product[i], x_bias, y_bias)  
+        # for i, square in enumerate(self.squares[6:]):
         #     # 依照投影向量与各个面法向量的点积, 决定当前应该显示哪个面
         #     square2buf(self, square, light_product[i], x_bias, y_bias)  
         
