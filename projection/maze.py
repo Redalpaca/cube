@@ -10,7 +10,17 @@ import sys
    z/   |y
 """
 
-numLine = 40
+"""
+在 move 时，如果直接修改坐标，旋转时的轴会偏移
+可以考虑修改 消失点（视点）？或者视平面？
+
+可以这样：
+设一个参考点 p, 初始值为 0,0,0 ，然后平移时将这个点跟着移动
+旋转曲面的坐标时，先将其坐标 - p， 再以过原点的轴转动，最后再 + p 移动回去
+应该可以做出绕p旋转的效果
+"""
+
+numLine = 20
 
 x_max = numLine*3
 y_max = numLine*8
@@ -80,12 +90,13 @@ class Cube(object):
         self.visual_vector = np.array([0,0,1])
         
         self.disappoint_vec = (0, 0, numLine*3)
-        
         # 投影面的坐标及参考点 
         # self.ground = [(0, 0, 1), (0, 0, -numLine)]
         self.ground = [(0, 0, 1), (0, 0, 0)]
         # self.ground = [(1, 0, 0), (numLine//2, 0, 0)]
         # self.ground = [(0, 1, 0), (0, numLine, 0)]
+        
+        self.ref_point = np.array((0,0,0))
         
         self.squares = [self.coordinate_yz, self.coordinate_xz, self.coordinate_xy,
                         self.coordinate_yz_1, self.coordinate_xz_1, self.coordinate_xy_1]
@@ -113,7 +124,7 @@ class Cube(object):
         return np.array( [[(x_0 + i, y_0 + j, z_0) for i in range(-numLine//2 ,numLine//2)] for j in range(-numLine//2, numLine//2)],
                             dtype= np.float64 ).reshape(numLine*numLine, 3)
     
-    def __init_coordinate_yz__(self, x_0, y_0, z_0, numLine):
+    def __init_coordinate_yz__(self, x_0, y_0, z_0, numLine, extend = 0):
         return np.array( [[(x_0, y_0 + i, z_0 - j) for i in range(numLine)] for j in range(numLine)],
                             dtype= np.int16 ).reshape(numLine*numLine, 3)
         
@@ -143,14 +154,29 @@ class Cube(object):
             self.squares[idx] = np.dot(square, rotate)
         self.normal_vector = np.dot(self.normal_vector, rotate)
         self.normal_vector_ball = np.dot(self.normal_vector_ball, rotate)
+        
+    def rotate_ref(self, theta= 0, axis= "x"):
+        rotate = Cube.__rotate__(theta, axis)
+        for idx, square in enumerate(self.squares):
+            square = square - self.ref_point
+            self.squares[idx] = np.dot(square, rotate) + self.ref_point
+        self.normal_vector = np.dot(self.normal_vector, rotate)
+        self.normal_vector_ball = np.dot(self.normal_vector_ball, rotate)
     
     def move(self, direction):
+        bias = (0,0,0)
         if direction == 'w':
-            for i, square in enumerate(self.squares):
-                self.squares[i] = square + (0,0,2)
+            bias = (0,0,-3)
         if direction == 's':
-            for i, square in enumerate(self.squares):
-                self.squares[i] = square + (0,0,-2)
+            bias = (0,0,3)
+        if direction == 'a':
+            bias = (0,-3,0)
+        if direction == 'd':
+            bias = (0,3,0)
+        
+        self.ref_point += bias
+        for i, square in enumerate(self.squares):
+                self.squares[i] = square + bias
         
         
         pass
@@ -203,16 +229,7 @@ class Cube(object):
         # for i, square in enumerate(self.temp):
         #     # 依照投影向量与各个面法向量的点积, 决定当前应该显示哪个面
         #     square2buf(self, square, light_product[i], x_bias, y_bias)  
-                
-        # 单独处理那个球
-        for i, c in enumerate(self.squares[0]):
-            normal = self.normal_vector_ball[i]
-            light = np.dot(normal, self.illuminant_vector) / (self.numLine/2) * 4.5 + 6 # normalize
-            self.testlight = light
-            self.testnormal = normal
-            # if light >= 0:
-            cube.buf[int(c[0]+x_bias)%row, int(2*c[1]+y_bias)%col] = light 
-            pass  
+        
         
         
     
@@ -237,44 +254,47 @@ class Cube(object):
 class KeyHandler(object):
     # cube
     def handler_w(self, event):
-        cube.rotate(theta, axis= "y")
+        # cube.rotate(theta, axis= "y")
+        cube.move(event.name)
         cube.writeBuf(x_bias, y_bias)
         cube.show()
         pass
     def handler_s(self, event):
-        cube.rotate(-theta, axis= "y")
+        # cube.rotate(-theta, axis= "y")
+        cube.move(event.name)
         cube.writeBuf(x_bias, y_bias)
         cube.show()
         pass
     def handler_d(self, event):
-        cube.rotate(theta, axis= "x")
+        # cube.rotate(theta, axis= "x")
+        cube.move(event.name)
         cube.writeBuf(x_bias, y_bias)
         cube.show()
         pass
     def handler_a(self, event):
-        cube.rotate(-theta, axis= "x")
+        cube.move(event.name)
         cube.writeBuf(x_bias, y_bias)
         cube.show()
         pass
     
     # light
     def handler_up(self, event):
-        cube.rotate(theta, axis= "y")
+        cube.rotate_ref(theta, axis= "y")
         cube.writeBuf(x_bias, y_bias)
         cube.show()
         pass
     def handler_down(self, event):
-        cube.rotate(-theta, axis= "y")
+        cube.rotate_ref(-theta, axis= "y")
         cube.writeBuf(x_bias, y_bias)
         cube.show()
         pass
     def handler_left(self, event):
-        cube.rotate_light(-2*theta, axis= "x")
+        cube.rotate_ref(-theta, axis= "x")
         cube.writeBuf(x_bias, y_bias)
         cube.show()
         pass
     def handler_right(self, event):
-        cube.rotate_light(2*theta, axis= "x")
+        cube.rotate_ref(theta, axis= "x")
         cube.writeBuf(x_bias, y_bias)
         cube.show()
         pass
