@@ -68,8 +68,8 @@ class Cube(object):
         self.illuminant_vector = np.array([0.5773502,0.5773502,0.5773502]) 
         
         refer = numLine // 2
-        self.coordinate_yz = self.__init_coordinate_yz__(-refer, -refer, refer, numLine= numLine)
-        self.coordinate_xz = self.__init_coordinate_xz__(-refer, -refer, refer, numLine= numLine)
+        self.coordinate_yz = self.__init_coordinate_yz__(-refer, -refer, refer, numLine= numLine, extend= 20)
+        self.coordinate_xz = self.__init_coordinate_xz__(-refer, -refer, refer, numLine= numLine, extend= 20)
         self.coordinate_xy = self.__init_coordinate_xy__(-refer, -refer, refer, numLine= numLine)
         
         self.coordinate_yz_1 = self.__init_coordinate_yz__(refer, -refer, refer, numLine= numLine)
@@ -125,16 +125,16 @@ class Cube(object):
                             dtype= np.float64 ).reshape(numLine*numLine, 3)
     
     def __init_coordinate_yz__(self, x_0, y_0, z_0, numLine, extend = 0):
-        return np.array( [[(x_0, y_0 + i, z_0 - j) for i in range(numLine)] for j in range(numLine)],
-                            dtype= np.int16 ).reshape(numLine*numLine, 3)
+        return np.array( [[(x_0, y_0 + i, z_0 - j) for i in range(numLine)] for j in range(numLine + extend)],
+                            dtype= np.int16 ).reshape(numLine*(numLine + extend), 3)
         
-    def __init_coordinate_xz__(self, x_0, y_0, z_0, numLine):
-        return np.array( [[(x_0 + i, y_0, z_0 - j) for i in range(numLine)] for j in range(numLine)],
-                                    dtype= np.int16 ).reshape(numLine*numLine, 3)
+    def __init_coordinate_xz__(self, x_0, y_0, z_0, numLine, extend = 0):
+        return np.array( [[(x_0 + i, y_0, z_0 - j) for i in range(numLine)] for j in range(numLine + extend)],
+                            dtype= np.int16 ).reshape(numLine*(numLine + extend), 3)
         
-    def __init_coordinate_xy__(self, x_0, y_0, z_0, numLine):
+    def __init_coordinate_xy__(self, x_0, y_0, z_0, numLine, extend = 0):
         return np.array( [[(x_0 + j, y_0 + i, z_0) for i in range(numLine)] for j in range(numLine)],
-                                    dtype= np.int16 ).reshape(numLine*numLine, 3)
+                            dtype= np.int16 ).reshape(numLine*numLine, 3)
     
     def __rotate__(theta= 0, axis= "x"):
         def rotate_x(theta):
@@ -203,20 +203,15 @@ class Cube(object):
             for c in square:
                 project_vec = - c + self.disappoint_vec
                 c_ = project(c, self.ground[0], project_vec, self.ground[1])
-                x = int(c_[0]+x_bias)%row
-                y = int(c_[1]*2+y_bias)%col
-                # if (x < 0 or y < 0) or (x >= row or y >= col):
+                x = int(c_[0]+x_bias)
+                y = int(c_[1]*2+y_bias)
+                # todo optimize
+                if x in range(0,row) and y in range(0,col):
+                    cube.buf[x][y] = light
+                # if (x >= row or y >= col):
                 #     return
                 # else:
-                cube.buf[x][y] = light
-        
-        # 投影
-        # for i, square in enumerate(self.squares):
-        #     for c in square:
-        #         shadow = project(c, self.ground[0], -self.illuminant_vector, self.ground[1])
-        #         if (0 <= shadow[0]+x_bias < row-1) and (0 <= 2*shadow[1]+y_bias < col-1):
-        #             cube.buf[int(shadow[0]+x_bias), int(2*shadow[1]+y_bias)] = 1
-        #         pass
+                #     cube.buf[x][y] = light
         
         for i, square in enumerate(self.squares[:6]):
             # 依照投影向量与各个面法向量的点积, 决定当前应该显示哪个面
