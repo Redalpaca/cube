@@ -176,6 +176,9 @@ class Cube(object):
         
         def square2buf(cube: Cube, square, light, x_bias, y_bias):
             for c in square:
+                # 实质是计算待投影坐标与消失点的距离, 越过消失点的点不要投影
+                if c[2] > self.disappoint_vec[2]:
+                    continue
                 project_vec = - c + self.disappoint_vec
                 c_ = project(c, self.ground[0], project_vec, self.ground[1])
                 x = int(c_[0]+x_bias)

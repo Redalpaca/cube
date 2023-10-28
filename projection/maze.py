@@ -18,6 +18,13 @@ import sys
 设一个参考点 p, 初始值为 0,0,0 ，然后平移时将这个点跟着移动
 旋转曲面的坐标时，先将其坐标 - p， 再以过原点的轴转动，最后再 + p 移动回去
 应该可以做出绕p旋转的效果
+补充：
+其实不需要这么做，因为这里不是移动摄像机而是移动所有坐标，只是显示有问题
+检查一下投影面和消失点的问题
+
+映射的时候，若c[3] 大于 映射平面的 z 值。就别映射上去了
+
+参考点也要旋转的？
 """
 
 numLine = 20
@@ -67,11 +74,14 @@ class Cube(object):
         # value of |dot| vary at: 0 ~ |illuminant_vector|
         self.illuminant_vector = np.array([0.5773502,0.5773502,0.5773502]) 
         
-        refer = numLine // 2
+        refer = numLine //2
         
-        self.left_0 = self.__init_coordinate_xz__(-refer, -refer, refer, numLine= numLine, extend= 20)
-        self.right_0 = self.__init_coordinate_xz__(-refer, refer, refer, numLine= numLine, extend= 20)
-        self.bottom_0 = self.__init_coordinate_yz__(refer, -refer, refer, numLine= numLine, extend= 20)
+        self.left_0 = self.__init_coordinate_xz__(-refer, -refer, refer, numLine= numLine, extend= numLine+numLine)
+        self.right_0 = self.__init_coordinate_xz__(-refer, refer, refer, numLine= numLine, extend= numLine)
+        self.bottom_0 = self.__init_coordinate_yz__(refer, -refer, refer, numLine= numLine, extend= numLine)
+        
+        self.front_0 = self.__init_coordinate_xy__(-refer, -refer, -refer-numLine-numLine, numLine= numLine, extend= numLine+numLine)
+        self.front_1 = self.__init_coordinate_xy__(-refer, refer, -refer-numLine, numLine= numLine, extend= numLine)
         
         self.coordinate_yz = self.__init_coordinate_yz__(-refer, -refer, refer, numLine= numLine, extend= 20)
         self.coordinate_xz = self.__init_coordinate_xz__(-refer, -refer, refer, numLine= numLine, extend= 20)
@@ -94,16 +104,28 @@ class Cube(object):
         self.normal_vector_ball = np.array([ [c[0]+numLine/2, c[1], c[2] ] for c in self.coordinate_yz])
         self.visual_vector = np.array([0,0,1])
         
-        self.disappoint_vec = (0, 0, numLine*3)
-        # 投影面的坐标及参考点 
-        # self.ground = [(0, 0, 1), (0, 0, -numLine)]
-        self.ground = [(0, 0, 1), (0, 0, 0)]
+        """ ATTENTION
+        origin:
+            self.disappoint_vec = (0, 0, 3*numLine)
+            self.ground = [(0, 0, 1), (0, 0, 0)]
+            这样的视角无法很好地模拟实际
+        
+        投影的失真效果取决于 ground 与 disappear point 之间的距离
+        距离越大越接近于平行投影，与人类视角的差距也会变大（可能会穿模，看到另一面墙）
+        
+        投影在屏幕上的显示是共同决定的，自己调参总结一下
+        
+        """
+        self.disappoint_vec = (0, 0, 0.5*numLine)
+        self.ground = [(0, 0, 1), (0, 0, -1.5*numLine)]
+        
+        
         # self.ground = [(1, 0, 0), (numLine//2, 0, 0)]
         # self.ground = [(0, 1, 0), (0, numLine, 0)]
         
         self.ref_point = np.array((0,0,0))
         self.squares = []
-        self.squares.extend([self.left_0, self.right_0, self.bottom_0])
+        self.squares.extend([self.left_0, self.right_0, self.bottom_0, self.front_0, self.front_1])
         
         # self.squares = [self.coordinate_yz, self.coordinate_xz, self.coordinate_xy,
         #                 self.coordinate_yz_1, self.coordinate_xz_1, self.coordinate_xy_1]
@@ -137,8 +159,8 @@ class Cube(object):
                             dtype= np.int16 ).reshape(numLine*(numLine + extend), 3)
         
     def __init_coordinate_xy__(self, x_0, y_0, z_0, numLine, extend = 0):
-        return np.array( [[(x_0 + j, y_0 + i, z_0) for i in range(numLine)] for j in range(numLine)],
-                            dtype= np.int16 ).reshape(numLine*numLine, 3)
+        return np.array( [[(x_0 + j, y_0 + i, z_0) for i in range(numLine + extend)] for j in range(numLine)],
+                            dtype= np.int16 ).reshape(numLine*(numLine + extend), 3)
     
     def __rotate__(theta= 0, axis= "x"):
         def rotate_x(theta):
@@ -162,8 +184,9 @@ class Cube(object):
     def rotate_ref(self, theta= 0, axis= "x"):
         rotate = Cube.__rotate__(theta, axis)
         for idx, square in enumerate(self.squares):
-            square = square - self.ref_point
-            self.squares[idx] = np.dot(square, rotate) + self.ref_point
+            self.squares[idx] = np.dot(square, rotate)
+            # square = square - self.ref_point
+            # self.squares[idx] = np.dot(square, rotate) + self.ref_point
         self.normal_vector = np.dot(self.normal_vector, rotate)
         self.normal_vector_ball = np.dot(self.normal_vector_ball, rotate)
     
@@ -179,6 +202,7 @@ class Cube(object):
             bias = (0,-2,0)
         
         self.ref_point += bias
+        # self.ground += bias
         for i, square in enumerate(self.squares):
                 self.squares[i] = square + bias
         
@@ -205,6 +229,12 @@ class Cube(object):
         
         def square2buf(cube: Cube, square, light, x_bias, y_bias):
             for c in square:
+                # 实质是计算待投影坐标与消失点的距离, 越过消失点的点不要投影
+                if c[2] > self.disappoint_vec[2]:
+                    continue
+                # if c[2] > self.ground[1][2]:
+                #     continue
+                
                 project_vec = - c + self.disappoint_vec
                 c_ = project(c, self.ground[0], project_vec, self.ground[1])
                 try:
@@ -247,6 +277,7 @@ class Cube(object):
             print('')
         # refresh buf
         self.buf = np.zeros_like(self.buf)
+        print(self.ref_point)
         # print(self.normal_vector)
         # print(self.testnormal)
         # print(self.testlight)
