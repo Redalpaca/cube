@@ -81,7 +81,12 @@ class Cube(object):
         self.bottom_0 = self.__init_coordinate_yz__(refer, -refer, refer, numLine= numLine, extend= numLine)
         
         self.front_0 = self.__init_coordinate_xy__(-refer, -refer, -refer-numLine-numLine, numLine= numLine, extend= numLine+numLine)
-        self.front_1 = self.__init_coordinate_xy__(-refer, refer, -refer-numLine, numLine= numLine, extend= numLine)
+        self.front_1 = self.__init_coordinate_xy__(-refer, refer, -refer-numLine, numLine= numLine, extend= numLine+numLine)
+        
+        self.left_1 = self.__init_coordinate_xz__(-refer, -refer+3*numLine, refer-3*numLine, numLine= numLine, extend= numLine+numLine)
+        self.right_1 = self.__init_coordinate_xz__(-refer, -refer+4*numLine, refer-2*numLine, numLine= numLine, extend= numLine+2*numLine)
+        
+        
         
         self.coordinate_yz = self.__init_coordinate_yz__(-refer, -refer, refer, numLine= numLine, extend= 20)
         self.coordinate_xz = self.__init_coordinate_xz__(-refer, -refer, refer, numLine= numLine, extend= 20)
@@ -125,7 +130,8 @@ class Cube(object):
         
         self.ref_point = np.array((0,0,0))
         self.squares = []
-        self.squares.extend([self.left_0, self.right_0, self.bottom_0, self.front_0, self.front_1])
+        self.squares.extend([self.left_0, self.right_0, self.front_0, self.front_1, self.left_1, self.right_1])
+        self.squares.reverse()
         
         # self.squares = [self.coordinate_yz, self.coordinate_xz, self.coordinate_xy,
         #                 self.coordinate_yz_1, self.coordinate_xz_1, self.coordinate_xy_1]
@@ -138,6 +144,15 @@ class Cube(object):
         self.lightMap = [' ', '.', '*', '%']
         self.lightMap = " .-:;=+*#%@@@@@@"
         self.lightMap_ball = " .--:;=+**##%@@"
+        
+        self.movementMap = {
+            'w':(0,0,2),
+            's':(0,0,-2),
+            'a':(0,2,0),
+            'd':(0,-2,0),
+            'space':(2,0,0),
+            'shift':(-2,0,0),
+        }
         pass
     
     def __init_yz__(self, x_0, y_0, z_0, numLine):
@@ -191,16 +206,21 @@ class Cube(object):
         self.normal_vector_ball = np.dot(self.normal_vector_ball, rotate)
     
     def move(self, direction):
-        bias = (0,0,0)
-        if direction == 'w':
-            bias = (0,0,2)
-        if direction == 's':
-            bias = (0,0,-2)
-        if direction == 'a':
-            bias = (0,2,0)
-        if direction == 'd':
-            bias = (0,-2,0)
+        # bias = (0,0,0)
+        # if direction == 'w':
+        #     bias = (0,0,2)
+        # elif direction == 's':
+        #     bias = (0,0,-2)
+        # elif direction == 'a':
+        #     bias = (0,2,0)
+        # elif direction == 'd':
+        #     bias = (0,-2,0)
+        # elif direction == 'space':
+        #     bias = (2,0,0)
+        # elif direction == 'shift':
+        #     bias = (-2,0,0)
         
+        bias = self.movementMap[direction]
         self.ref_point += bias
         # self.ground += bias
         for i, square in enumerate(self.squares):
@@ -251,7 +271,7 @@ class Cube(object):
                 #     cube.buf[x][y] = light
         for i, square in enumerate(self.squares[:6]):
             # 依照投影向量与各个面法向量的点积, 决定当前应该显示哪个面
-            square2buf(self, square, light_product[i], x_bias, y_bias)  
+            square2buf(self, square, i+1, x_bias, y_bias)  
 
         # for i, square in enumerate(self.squares[:6]):
         #     # 依照投影向量与各个面法向量的点积, 决定当前应该显示哪个面
@@ -284,6 +304,13 @@ class Cube(object):
         # print(self.squares[0])
 
 class KeyHandler(object):
+    def hadler_move(self, event):
+        if event.name not in ['w','a','s','d','space','shift']:
+            return
+        cube.move(event.name)
+        cube.writeBuf(x_bias, y_bias)
+        cube.show()
+        
     # cube
     def handler_w(self, event):
         # cube.rotate(theta, axis= "y")
@@ -343,16 +370,17 @@ handler = KeyHandler()
 if __name__ == "__main__":
     # cube.__init_coordinate__(20, 10, 10)
     # cube.writeBuf(theta= np.pi/6, axis= "x")d
-    keyboard.on_press_key("w", handler.handler_w)
-    keyboard.on_press_key("a", handler.handler_a)
-    keyboard.on_press_key("s", handler.handler_s)
-    keyboard.on_press_key("d", handler.handler_d)
+    # keyboard.on_press_key("w", handler.handler_w)
+    # keyboard.on_press_key("a", handler.handler_a)
+    # keyboard.on_press_key("s", handler.handler_s)
+    # keyboard.on_press_key("d", handler.handler_d)
     
     keyboard.on_press_key("up", handler.handler_up)
     keyboard.on_press_key("down", handler.handler_down)
     keyboard.on_press_key("left", handler.handler_left)
     keyboard.on_press_key("right", handler.handler_right)
-    keyboard.on_press_key(" ", handler.handler_reset)
+    
+    keyboard.on_press(handler.hadler_move)
     keyboard.wait("esc")
     # cube.rotate(theta= np.pi/6, axis= "y")
     # cube.rotate(theta= np.pi/6, axis= "y")
