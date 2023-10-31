@@ -10,7 +10,7 @@ wasd    旋转视角
 x       更新魔方面(已有自动更新)
 """
 
-numLine = 80
+numLine = 100
 x_max = numLine*1
 y_max = numLine*2
 x_bias = numLine//2
@@ -47,7 +47,7 @@ class Cube(object):
         self.xy_0 = []
         self.xy_1 = []
         
-        gap = 4
+        gap = 8
         
         for i in range(-1, 2):
             for j in range(-1, 2):

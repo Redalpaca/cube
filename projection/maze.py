@@ -24,13 +24,16 @@ import sys
 
 映射的时候，若c[3] 大于 映射平面的 z 值。就别映射上去了
 
-参考点也要旋转的？
+
+考虑再做一个版本 旋转视角 
+xy映射后还需要变换吗
+
 """
 
-numLine = 20
+numLine = 40
 
 x_max = numLine*3
-y_max = numLine*8
+y_max = numLine*10
 x_bias = numLine*1.5
 y_bias = numLine*3
 
@@ -146,12 +149,12 @@ class Cube(object):
         self.lightMap_ball = " .--:;=+**##%@@"
         
         self.movementMap = {
-            'w':(0,0,2),
-            's':(0,0,-2),
-            'a':(0,2,0),
-            'd':(0,-2,0),
-            'space':(2,0,0),
-            'shift':(-2,0,0),
+            'w':(0,0,numLine//10),
+            's':(0,0,-numLine//10),
+            'a':(0,numLine//10,0),
+            'd':(0,-numLine//10,0),
+            'space':(numLine//10,0,0),
+            'shift':(-numLine//10,0,0),
         }
         pass
     
@@ -259,7 +262,7 @@ class Cube(object):
                 c_ = project(c, self.ground[0], project_vec, self.ground[1])
                 try:
                     x = int(c_[0]+x_bias)
-                    y = int(c_[1]*2+y_bias)
+                    y = int(c_[1]*1.5+y_bias)
                 except (OverflowError, ValueError):
                     continue
                 # todo optimize
